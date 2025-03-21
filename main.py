@@ -7,35 +7,36 @@ import os
 
 # Configuration files
 CONFIG_FILE = 'config.json'
-RISK_CONFIG_FILE = 'risk_config.json'
+SETTINGS_FILE = 'settings.json'
 
 # Default risk configurations
 DEFAULT_FIXED_LOTS = {
     "1": [0.50],
     "2": [0.25, 0.25],
-    "3": [0.10, 0.20, 0.30],
-    "4": [0.10, 0.15, 0.15, 0.20],
-    "5": [0.10, 0.10, 0.10, 0.15, 0.15],
-    "6": [0.10, 0.10, 0.10, 0.10, 0.10, 0.10],
-    "7": [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10],
-    "8": [0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10, 0.10]
+    "3": [0.10, 0.10, 0.10],
+    "4": [0.10, 0.10, 0.10, 0.20],
+    "5": [0.07, 0.07, 0.07, 0.07, 0.07],
+    "6": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
+    "7": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
+    "8": [0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04]
 }
 
 DEFAULT_RISK_PERCENTAGES = {
     "1": [10.0],
     "2": [5.0, 5.0],
-    "3": [3.0, 3.0, 4.0],
-    "4": [2.0, 2.0, 3.0, 3.0],
-    "5": [1.5, 1.5, 2.0, 2.0, 3.0],
-    "6": [1.0, 1.0, 1.5, 1.5, 2.0, 2.0],
-    "7": [1.0, 1.0, 1.0, 1.0, 1.5, 1.5, 2.0],
-    "8": [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0]
+    "3": [3.3, 3.3, 3.3],
+    "4": [2.5, 2.5, 2.5, 2.5],
+    "5": [2.0, 2.0, 2.0, 2.0, 2.0],
+    "6": [1.6, 1.6, 1.6, 1.6, 1.6, 1.6],
+    "7": [1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4],
+    "8": [1.3, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2]
 }
 
 # Create default risk configuration
 DEFAULT_CONFIG = {
     "active_config": "default",
     "mode": "risk",  # Can be "fixed" or "risk"
+    "autospread": False,
     "configs": {
         "default": {
             "fixed_lots": DEFAULT_FIXED_LOTS,
@@ -215,7 +216,7 @@ def process_add_command(message_content):
 def save_risk_config():
     """Save risk configuration to file"""
     try:
-        with open(RISK_CONFIG_FILE, 'w') as f:
+        with open(SETTINGS_FILE, 'w') as f:
             json.dump(risk_config, f, indent=4)
         return True
     except Exception as e:
@@ -240,11 +241,11 @@ DEFAULT_TP_SYMBOLS = {
 
 # Load or initialize risk configuration
 try:
-    if os.path.exists(RISK_CONFIG_FILE):
+    if os.path.exists(SETTINGS_FILE):
         # Load existing configuration
-        with open(RISK_CONFIG_FILE, 'r') as f:
+        with open(SETTINGS_FILE, 'r') as f:
             risk_config = json.load(f)
-        print(f"Loaded existing risk configuration from {RISK_CONFIG_FILE}")
+        print(f"Loaded existing risk configuration from {SETTINGS_FILE}")
 
         # Ensure default configuration exists
         if "configs" not in risk_config or "default" not in risk_config.get("configs", {}):
@@ -266,23 +267,26 @@ try:
                 if symbol not in risk_config["tp_pips"]:
                     risk_config["tp_pips"][symbol] = value
 
+        if "autospread" not in risk_config:
+            risk_config["autospread"] = False
+
         save_risk_config()
     else:
         # Create new configuration file with defaults
         risk_config = DEFAULT_CONFIG
         risk_config["tp_pips"] = DEFAULT_TP_SYMBOLS.copy()
-        with open(RISK_CONFIG_FILE, 'w') as f:
+        with open(SETTINGS_FILE, 'w') as f:
             json.dump(risk_config, f, indent=4)
-        print(f"Created new risk configuration in {RISK_CONFIG_FILE}")
+        print(f"Created new risk configuration in {SETTINGS_FILE}")
 except Exception as e:
-    print(f"Error with risk_config.json: {str(e)}")
+    print(f"Error with settings.json: {str(e)}")
     risk_config = DEFAULT_CONFIG
     risk_config["tp_pips"] = DEFAULT_TP_SYMBOLS.copy()
     try:
-        with open(RISK_CONFIG_FILE, 'w') as f:
+        with open(SETTINGS_FILE, 'w') as f:
             json.dump(risk_config, f, indent=4)
     except:
-        print("Failed to create default risk configuration")
+        print("Failed to create default settings")
 
 
 # Initialize MetaTrader 5
@@ -533,6 +537,29 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
         # Set order action based on market/limit
         order_action_mt5 = mt5.TRADE_ACTION_PENDING if order_kind != "MARKET" else mt5.TRADE_ACTION_DEAL
 
+        # Get current symbol info for price validation and spread calculation
+        symbol_info = mt5.symbol_info(symbol)
+        if not symbol_info:
+            print(f"Symbol info not found for {symbol}")
+            return False
+
+        # Apply autospread adjustment if enabled
+        original_entry_price = entry_price
+        if risk_config.get("autospread", False) and symbol_info:
+            # Calculate the spread in price points
+            spread_points = symbol_info.ask - symbol_info.bid
+            print(f"Current spread for {symbol}: {spread_points}")
+
+            # Adjust entry price based on order type
+            if order_type.upper() == "LONG":
+                # For long orders, add the spread to make the limit more likely to be hit
+                entry_price += spread_points
+                print(f"Autospread adjusted LONG limit: {original_entry_price} -> {entry_price}")
+            else:  # SHORT
+                # For short orders, subtract the spread to make the limit more likely to be hit
+                entry_price -= spread_points
+                print(f"Autospread adjusted SHORT limit: {original_entry_price} -> {entry_price}")
+
         # Set expiration
         if expiration == "DAY":
             expiry_type = mt5.ORDER_TIME_DAY
@@ -677,6 +704,7 @@ def process_config_command(message_content):
 
     # Help command
     if command == "help":
+        # Update the help_text variable in the process_config_command function
         help_text = (
             "Available commands:\n"
             "`config list` - List all configurations\n"
@@ -692,7 +720,9 @@ def process_config_command(message_content):
             "`tp <symbol_type> <pips>` - Set take profit pips for a symbol type\n"
             "Example: `tp forex 10` - Sets 10 pips TP for forex pairs\n"
             "`add <stock_symbol>` - Add a stock symbol for TP configuration\n"
-            "Example: `add AAPL.NAS` - Adds Apple stock to TP configuration"
+            "Example: `add AAPL.NAS` - Adds Apple stock to TP configuration\n\n"
+            "Other commands:\n"
+            "`autospread on/off` - Enable/disable automatic spread adjustment for limit orders"
         )
         return help_text
 
@@ -700,12 +730,13 @@ def process_config_command(message_content):
     elif command == "list":
         active_config = risk_config.get("active_config", "default")
         mode = risk_config.get("mode", "risk")
+        autospread = "On" if risk_config.get("autospread", False) else "Off"
         configs = list(risk_config.get("configs", {}).keys())
 
         if not configs:
             return "No configurations found."
 
-        return f"Mode: {mode}\nActive: {active_config}\nConfigurations: {', '.join(configs)}"
+        return f"Mode: {mode}\nActive: {active_config}\nAutospread: {autospread}\nConfigurations: {', '.join(configs)}"
 
     # Show configuration details
     elif command == "show" and len(parts) >= 3:
@@ -897,6 +928,56 @@ def process_tp_config_command():
     return result
 
 
+def process_autospread_command(message_content):
+    """Process autospread command to enable/disable automatic spread adjustment"""
+    parts = message_content.strip().lower().split()
+
+    if len(parts) < 2:
+        return "Invalid command format. Use: `autospread on` or `autospread off`"
+
+    setting = parts[1]
+
+    if setting not in ["on", "off"]:
+        return "Invalid setting. Use: `on` or `off`"
+
+    # Update the configuration
+    risk_config["autospread"] = (setting == "on")
+    save_risk_config()
+
+    if setting == "on":
+        return "Autospread enabled. Limit prices will be adjusted for symbol spread."
+    else:
+        return "Autospread disabled. Limit prices will be used as specified."
+
+
+def process_help_command():
+    """Process help command to display available commands"""
+    help_text = (
+        "**Available Commands:**\n\n"
+        "**Configuration Commands:**\n"
+        "`config list` - List all configurations\n"
+        "`config show <name>` - Show details of a specific configuration\n"
+        "`config set mode <fixed|risk>` - Set the active mode\n"
+        "`config set active <name>` - Set the active configuration\n"
+        "`config create <name>` - Create a new configuration\n"
+        "`config delete <name>` - Delete a configuration\n"
+        "`config set fixed <name> <limits> <values>` - Set fixed lot values\n"
+        "`config set risk <name> <limits> <percentages>` - Set risk percentages\n"
+        "Example: `config set fixed default 2 0.5 0.5`\n\n"
+        "**Take Profit Commands:**\n"
+        "`tp config` - Display current take profit configuration\n"
+        "`tp <symbol_type> <value>` - Set take profit value for a symbol type\n"
+        "Example: `tp forex 10` - Sets 10 pips TP for forex pairs\n"
+        "`add <stock_symbol>` - Add a stock symbol for TP configuration\n"
+        "Example: `add AAPL.NAS` - Adds Apple stock to TP configuration\n\n"
+        "**Autospread Command:**\n"
+        "`autospread on/off` - Enable/disable automatic spread adjustment for limit orders\n\n"
+        "**Help Command:**\n"
+        "`help` - Display this help message"
+    )
+    return help_text
+
+
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user.name} ({client.user.id})')
@@ -911,6 +992,12 @@ async def on_message(message):
         return
 
     content = message.content.strip()
+
+    # Process help command
+    if content.lower() == "help":
+        response = process_help_command()
+        await message.channel.send(response)
+        return
 
     # Process configuration commands
     if content.lower().startswith("config "):
@@ -927,6 +1014,12 @@ async def on_message(message):
     # Process take profit commands
     if content.lower().startswith("tp "):
         response = process_tp_command(content)
+        await message.channel.send(response)
+        return
+
+    # Process autospread commands
+    if content.lower().startswith("autospread "):
+        response = process_autospread_command(content)
         await message.channel.send(response)
         return
 
