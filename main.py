@@ -565,9 +565,17 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
             expiry_type = mt5.ORDER_TIME_DAY
             expiry = 0  # Not used for DAY
         elif expiration == "WEEK":
-            expiry_type = mt5.ORDER_TIME_SPECIFIED
-            expiry = get_friday_end_timestamp()
-            print(f"Setting expiry to Friday timestamp: {expiry} ({datetime.datetime.fromtimestamp(expiry)})")
+            today = datetime.datetime.now()
+            if today.weekday() == 4:  # Friday is weekday 4
+                # If today is Friday, change to DAY expiration
+                expiry_type = mt5.ORDER_TIME_DAY
+                expiry = 0
+                print("Today is Friday, changing WEEK expiration to DAY")
+            else:
+                # Otherwise, set to next Friday as before
+                expiry_type = mt5.ORDER_TIME_SPECIFIED
+                expiry = get_friday_end_timestamp()
+                print(f"Setting expiry to Friday timestamp: {expiry} ({datetime.datetime.fromtimestamp(expiry)})")
         else:
             expiry_type = mt5.ORDER_TIME_GTC
             expiry = 0  # Not used for GTC
