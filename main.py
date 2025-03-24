@@ -6,8 +6,8 @@ import datetime
 import os
 
 # Configuration files
-CONFIG_FILE = 'config.json'
-SETTINGS_FILE = 'settings.json'
+CONFIG_FILE = "config.json"
+SETTINGS_FILE = "settings.json"
 
 # Default risk configurations
 DEFAULT_FIXED_LOTS = {
@@ -18,7 +18,7 @@ DEFAULT_FIXED_LOTS = {
     "5": [0.07, 0.07, 0.07, 0.07, 0.07],
     "6": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
     "7": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05],
-    "8": [0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04]
+    "8": [0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04, 0.04],
 }
 
 DEFAULT_RISK_PERCENTAGES = {
@@ -29,7 +29,7 @@ DEFAULT_RISK_PERCENTAGES = {
     "5": [2.0, 2.0, 2.0, 2.0, 2.0],
     "6": [1.6, 1.6, 1.6, 1.6, 1.6, 1.6],
     "7": [1.4, 1.4, 1.4, 1.4, 1.4, 1.4, 1.4],
-    "8": [1.3, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2]
+    "8": [1.3, 1.3, 1.3, 1.3, 1.2, 1.2, 1.2, 1.2],
 }
 
 # Create default risk configuration
@@ -40,19 +40,21 @@ DEFAULT_CONFIG = {
     "configs": {
         "default": {
             "fixed_lots": DEFAULT_FIXED_LOTS,
-            "risk_percentages": DEFAULT_RISK_PERCENTAGES
+            "risk_percentages": DEFAULT_RISK_PERCENTAGES,
         }
-    }
+    },
 }
 
 # Load credentials
 try:
-    with open(CONFIG_FILE, 'r') as f:
+    with open(CONFIG_FILE, "r") as f:
         config = json.load(f)
-    DISCORD_TOKEN = str(config.get('discord_token', ''))
+    DISCORD_TOKEN = str(config.get("discord_token", ""))
 
     if not DISCORD_TOKEN:
-        print("Warning: One or more required configuration values are empty in config.json")
+        print(
+            "Warning: One or more required configuration values are empty in config.json"
+        )
 
 except Exception as e:
     print(f"Error loading config.json: {str(e)}")
@@ -65,7 +67,22 @@ if not DISCORD_TOKEN:
 
 def is_forex_pair(symbol: str) -> bool:
     """Determine if the symbol is a forex pair."""
-    currency_codes = {'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'NZD', 'CAD', 'CHF', 'SGD', 'HKD'}
+    currency_codes = {
+        "USD",
+        "EUR",
+        "GBP",
+        "JPY",
+        "AUD",
+        "NZD",
+        "CAD",
+        "CHF",
+        "SGD",
+        "HKD",
+    }
+
+    # Remove .r suffix if present
+    if symbol.endswith(".r"):
+        symbol = symbol[:-2]
 
     if len(symbol) == 6:
         first_currency = symbol[:3]
@@ -91,10 +108,16 @@ def calculate_take_profit(symbol, entry_price, position, limit_index=0):
 
     # Check for specific symbol matches first
     specific_symbols = {
-        "BTCUSD": "btc", "ETHUSD": "eth", "US30": "us30",
-        "US500": "us500", "USTEC": "ustec", "DE40": "de40",
-        "FR40": "fr40", "XAUUSD": "gold", "XAGUSD": "silver",
-        "XTIUSD": "oil"
+        "BTCUSD": "btc",
+        "ETHUSD": "eth",
+        "US30": "us30",
+        "US500": "us500",
+        "USTEC": "ustec",
+        "DE40": "de40",
+        "FR40": "fr40",
+        "XAUUSD": "gold",
+        "XAGUSD": "silver",
+        "XTIUSD": "oil",
     }
 
     if symbol in specific_symbols:
@@ -105,7 +128,11 @@ def calculate_take_profit(symbol, entry_price, position, limit_index=0):
         symbol_category = "forex"
 
     # If we couldn't determine the category or no TP is set for this category
-    if not symbol_category or symbol_category not in tp_pips_config or tp_pips_config[symbol_category] == 0:
+    if (
+        not symbol_category
+        or symbol_category not in tp_pips_config
+        or tp_pips_config[symbol_category] == 0
+    ):
         return None
 
     # Get symbol info to determine pip size
@@ -216,7 +243,7 @@ def process_add_command(message_content):
 def save_risk_config():
     """Save risk configuration to file"""
     try:
-        with open(SETTINGS_FILE, 'w') as f:
+        with open(SETTINGS_FILE, "w") as f:
             json.dump(risk_config, f, indent=4)
         return True
     except Exception as e:
@@ -236,26 +263,28 @@ DEFAULT_TP_SYMBOLS = {
     "fr40": 0,
     "gold": 0,
     "silver": 0,
-    "oil": 0
+    "oil": 0,
 }
 
 # Load or initialize risk configuration
 try:
     if os.path.exists(SETTINGS_FILE):
         # Load existing configuration
-        with open(SETTINGS_FILE, 'r') as f:
+        with open(SETTINGS_FILE, "r") as f:
             risk_config = json.load(f)
         print(f"Loaded existing risk configuration from {SETTINGS_FILE}")
 
         # Ensure default configuration exists
-        if "configs" not in risk_config or "default" not in risk_config.get("configs", {}):
+        if "configs" not in risk_config or "default" not in risk_config.get(
+            "configs", {}
+        ):
             print("Adding default configuration to existing config file")
             if "configs" not in risk_config:
                 risk_config["configs"] = {}
             if "default" not in risk_config["configs"]:
                 risk_config["configs"]["default"] = {
                     "fixed_lots": DEFAULT_FIXED_LOTS,
-                    "risk_percentages": DEFAULT_RISK_PERCENTAGES
+                    "risk_percentages": DEFAULT_RISK_PERCENTAGES,
                 }
 
         # Ensure tp_pips exists and is a dictionary
@@ -275,7 +304,7 @@ try:
         # Create new configuration file with defaults
         risk_config = DEFAULT_CONFIG
         risk_config["tp_pips"] = DEFAULT_TP_SYMBOLS.copy()
-        with open(SETTINGS_FILE, 'w') as f:
+        with open(SETTINGS_FILE, "w") as f:
             json.dump(risk_config, f, indent=4)
         print(f"Created new risk configuration in {SETTINGS_FILE}")
 except Exception as e:
@@ -283,7 +312,7 @@ except Exception as e:
     risk_config = DEFAULT_CONFIG
     risk_config["tp_pips"] = DEFAULT_TP_SYMBOLS.copy()
     try:
-        with open(SETTINGS_FILE, 'w') as f:
+        with open(SETTINGS_FILE, "w") as f:
             json.dump(risk_config, f, indent=4)
     except:
         print("Failed to create default settings")
@@ -305,15 +334,15 @@ AVAILABLE_SYMBOLS = {symbol.name for symbol in symbols} if symbols else set()
 
 # Different from above
 SYMBOL_MAPPINGS = {
-    'gold': 'XAUUSD',
-    'dax': 'DE40',
-    'spx': 'US500',
-    'nas': 'USTEC',
-    'btc': 'BTCUSD',
-    'eth': 'ETHUSD',
-    'gu': 'GBPUSD',
-    'uj': 'USDJPY',
-    'silver': 'XAGUSD'
+    "gold": "XAUUSD",
+    "dax": "DE40",
+    "spx": "US500",
+    "nas": "USTEC",
+    "btc": "BTCUSD",
+    "eth": "ETHUSD",
+    "gu": "GBPUSD",
+    "uj": "USDJPY",
+    "silver": "XAGUSD",
 }
 
 
@@ -380,7 +409,7 @@ def calculate_lot_size(balance, risk_percentage, symbol, entry_price, sl):
         print("Adjusted Lot Size to Max Volume")
     else:
         # Round down to nearest valid increment
-        lot_size = (int(lot_size / symbol_info.volume_step) * symbol_info.volume_step)
+        lot_size = int(lot_size / symbol_info.volume_step) * symbol_info.volume_step
 
     print(f"Final Calculated Lot Size for {symbol}: {lot_size}")
     return lot_size
@@ -389,6 +418,7 @@ def calculate_lot_size(balance, risk_percentage, symbol, entry_price, sl):
 def get_mapped_symbol(text: str) -> str or None:
     """
     Get the correct symbol from text using mappings and available symbols.
+    Prioritizes symbols with .r suffix when available.
 
     Args:
         text (str): The input text to search for symbol
@@ -401,7 +431,7 @@ def get_mapped_symbol(text: str) -> str or None:
     # First check for exact stock symbols (ending in .NYSE or .NAS)
     words = text.upper().split()
     for word in words:
-        if word.endswith(('.NYSE', '.NAS')):
+        if word.endswith((".NYSE", ".NAS")):
             if word in AVAILABLE_SYMBOLS:
                 return word
             else:
@@ -410,17 +440,25 @@ def get_mapped_symbol(text: str) -> str or None:
     # Then check symbol mappings
     for key, mapped_symbol in SYMBOL_MAPPINGS.items():
         if key in text:
+            # First check if there's a .r version available
+            r_version = f"{mapped_symbol}.r"
+            if r_version in AVAILABLE_SYMBOLS:
+                return r_version
             return mapped_symbol if mapped_symbol in AVAILABLE_SYMBOLS else None
 
-    # If no mapping found, look for direct symbol match
+    # If no mapping found, look for direct symbol match with .r priority
     for word in words:
+        r_version = f"{word}.r"
+        if r_version in AVAILABLE_SYMBOLS:
+            return r_version
         if word in AVAILABLE_SYMBOLS:
             return word
 
     # Check company name only using the first valid word
-    skip_words = {'long', 'short', 'vth', 'hot', 'stops', 'comments', 'call', 'loss'}
+    skip_words = {"long", "short", "vth", "hot", "stops", "comments", "call", "loss"}
     words = [
-        word.lower() for word in text.split()
+        word.lower()
+        for word in text.split()
         if word.lower() not in skip_words and word.isalpha()
     ]
     if not words:
@@ -431,7 +469,7 @@ def get_mapped_symbol(text: str) -> str or None:
 
     # Check company names and descriptions for symbol
     for symbol in AVAILABLE_SYMBOLS:
-        if symbol.endswith(('.NYSE', '.NAS')):
+        if symbol.endswith((".NYSE", ".NAS")):
             if word in symbol.lower():
                 # print(f"DEBUG: Found {word} in symbol {symbol}")
                 matches.append(symbol)
@@ -448,7 +486,8 @@ def get_mapped_symbol(text: str) -> str or None:
     elif len(matches) > 1:
         raise ValueError(
             f"Several matches were found for {word}. Please specify the symbol with one of the following:\n * "
-            f"{'\n* '.join(matches)}")
+            f"{'\n* '.join(matches)}"
+        )
     return None
 
 
@@ -474,18 +513,19 @@ def parse_tm_signal(message):
         raise ValueError(f"Error: No valid trading symbol found in string")
 
     # Find position (long/short)
-    position_match = re.search(r'\b(long|short)\b', message.lower())
+    position_match = re.search(r"\b(long|short)\b", message.lower())
     if not position_match:
         raise ValueError("Error: Position (long/short) not found in string")
     position = position_match.group(1).upper()
 
     # Get all numbers
-    numbers = re.findall(r'(\d+\.?\d*)', message)
+    numbers = re.findall(r"(\d+\.?\d*)", message)
     if not numbers:
         raise ValueError("Error: No numbers found in string")
     if len(numbers) < 2:
         raise ValueError(
-            "Error: Not enough numbers found in string. There must be at least 1 limit price and 1 stop loss.")
+            "Error: Not enough numbers found in string. There must be at least 1 limit price and 1 stop loss."
+        )
 
     # Convert large numbers if needed (Ex: AUDUSD is sometimes written as 61234 instead of 0.61234)
     if float(numbers[1]) > 30000 and symbol not in ["US30", "JP225", "BTCUSD", "USTEC"]:
@@ -496,8 +536,8 @@ def parse_tm_signal(message):
     limits = numbers[:-1]
 
     # Get comments and auto-keywords
-    comments = ''
-    comments_match = re.search(r'Comments:(.*?)(?=$|\n)', message, re.IGNORECASE)
+    comments = ""
+    comments_match = re.search(r"Comments:(.*?)(?=$|\n)", message, re.IGNORECASE)
     if comments_match:
         comments = comments_match.group(1).strip()
     if re.search("hot", message.lower()):
@@ -505,7 +545,15 @@ def parse_tm_signal(message):
 
     # Process expiry (Default to week if not major pair or vth (valid till hit))
     expiry = "WEEK"
-    major_forex_pairs = ['EURUSD', 'USDJPY', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD', 'NZDUSD']
+    major_forex_pairs = [
+        "EURUSD",
+        "USDJPY",
+        "GBPUSD",
+        "USDCHF",
+        "AUDUSD",
+        "USDCAD",
+        "NZDUSD",
+    ]
     if symbol in major_forex_pairs:
         expiry = "DAY"
     if re.search("vth", message.lower()):
@@ -515,12 +563,22 @@ def parse_tm_signal(message):
     if re.search("day", message.lower()):
         expiry = "DAY"
     if re.search("week", message.lower()):
-        expiry = 'WEEK'
+        expiry = "WEEK"
 
     return [symbol, position, limits, stop_loss, expiry, comments]
 
 
-def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None, comment=None, expiration=None):
+def place_trade(
+    order_type,
+    order_kind,
+    volume,
+    symbol,
+    entry_price,
+    sl,
+    tp=None,
+    comment=None,
+    expiration=None,
+):
     """
     Places a trade on MT5 with the given parameters using either risk percentage or fixed lot size.
     """
@@ -532,10 +590,18 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
             tp = float(tp)
 
         # Set order type based on long/short
-        order_type_mt5 = mt5.ORDER_TYPE_BUY_LIMIT if order_type.upper() == "LONG" else mt5.ORDER_TYPE_SELL_LIMIT
+        order_type_mt5 = (
+            mt5.ORDER_TYPE_BUY_LIMIT
+            if order_type.upper() == "LONG"
+            else mt5.ORDER_TYPE_SELL_LIMIT
+        )
 
         # Set order action based on market/limit
-        order_action_mt5 = mt5.TRADE_ACTION_PENDING if order_kind != "MARKET" else mt5.TRADE_ACTION_DEAL
+        order_action_mt5 = (
+            mt5.TRADE_ACTION_PENDING
+            if order_kind != "MARKET"
+            else mt5.TRADE_ACTION_DEAL
+        )
 
         # Get current symbol info for price validation and spread calculation
         symbol_info = mt5.symbol_info(symbol)
@@ -554,11 +620,15 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
             if order_type.upper() == "LONG":
                 # For long orders, add the spread to make the limit more likely to be hit
                 entry_price += spread_points
-                print(f"Autospread adjusted LONG limit: {original_entry_price} -> {entry_price}")
+                print(
+                    f"Autospread adjusted LONG limit: {original_entry_price} -> {entry_price}"
+                )
             else:  # SHORT
                 # For short orders, subtract the spread to make the limit more likely to be hit
                 entry_price -= spread_points
-                print(f"Autospread adjusted SHORT limit: {original_entry_price} -> {entry_price}")
+                print(
+                    f"Autospread adjusted SHORT limit: {original_entry_price} -> {entry_price}"
+                )
 
         # Set expiration
         if expiration == "DAY":
@@ -575,7 +645,9 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
                 # Otherwise, set to next Friday as before
                 expiry_type = mt5.ORDER_TIME_SPECIFIED
                 expiry = get_friday_end_timestamp()
-                print(f"Setting expiry to Friday timestamp: {expiry} ({datetime.datetime.fromtimestamp(expiry)})")
+                print(
+                    f"Setting expiry to Friday timestamp: {expiry} ({datetime.datetime.fromtimestamp(expiry)})"
+                )
         else:
             expiry_type = mt5.ORDER_TIME_GTC
             expiry = 0  # Not used for GTC
@@ -606,7 +678,7 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
             "type_filling": mt5.ORDER_FILLING_IOC,
             "type_time": expiry_type,
             "expiration": expiry,
-            "comment": comment
+            "comment": comment,
         }
 
         # Only add TP if it's not None (MetaTrader doesn't accept None for TP)
@@ -634,14 +706,20 @@ def place_trade(order_type, order_kind, volume, symbol, entry_price, sl, tp=None
 
         # Check the return code to determine if the order was successful
         # The TRADE_RETCODE_DONE is typically 10009
-        print(f"Order result - retcode: {result.retcode}, description: {result.comment}")
+        print(
+            f"Order result - retcode: {result.retcode}, description: {result.comment}"
+        )
 
         if result.retcode == mt5.TRADE_RETCODE_DONE:
             print(f"Order placed successfully: {result}")
             return True
         elif result.retcode == 10027:  # Likely a specific autotrading error code
-            print(f"Order warning - retcode: {result.retcode}, comment: {result.comment}")
-            print("This may be due to autotrading being disabled. Please check if autotrading is enabled in MT5.")
+            print(
+                f"Order warning - retcode: {result.retcode}, comment: {result.comment}"
+            )
+            print(
+                "This may be due to autotrading being disabled. Please check if autotrading is enabled in MT5."
+            )
             return False
         else:
             print(f"Order failed: {result.retcode} - {result.comment}")
@@ -662,13 +740,17 @@ def get_volumes_for_limits(symbol, limits, stop_loss, position):
     # Get the active configuration
     active_config = risk_config.get("configs", {}).get(active_config_name, {})
     if not active_config:
-        print(f"Warning: Configuration '{active_config_name}' not found. Using default.")
+        print(
+            f"Warning: Configuration '{active_config_name}' not found. Using default."
+        )
         active_config = risk_config.get("configs", {}).get("default", {})
 
     num_limits = str(len(limits))
 
     if num_limits not in ["1", "2", "3", "4", "5", "6", "7", "8"]:
-        print(f"Warning: Unsupported number of limits: {num_limits}. Using default for 1 limit.")
+        print(
+            f"Warning: Unsupported number of limits: {num_limits}. Using default for 1 limit."
+        )
         num_limits = "1"
 
     if mode == "fixed":
@@ -678,7 +760,9 @@ def get_volumes_for_limits(symbol, limits, stop_loss, position):
         return volumes
     else:  # mode == "risk"
         # Get risk percentages configuration
-        risk_percentages = active_config.get("risk_percentages", DEFAULT_RISK_PERCENTAGES)
+        risk_percentages = active_config.get(
+            "risk_percentages", DEFAULT_RISK_PERCENTAGES
+        )
         risk_percents = risk_percentages.get(num_limits, [1.0] * int(num_limits))
 
         # Get account balance
@@ -692,9 +776,13 @@ def get_volumes_for_limits(symbol, limits, stop_loss, position):
         # Calculate volumes based on risk percentages
         volumes = []
         for i, limit in enumerate(limits):
-            vol = calculate_lot_size(balance, risk_percents[i], symbol, float(limit), float(stop_loss))
+            vol = calculate_lot_size(
+                balance, risk_percents[i], symbol, float(limit), float(stop_loss)
+            )
             if vol is None:
-                print(f"Warning: Failed to calculate lot size for limit {i + 1}. Using 0.1")
+                print(
+                    f"Warning: Failed to calculate lot size for limit {i + 1}. Using 0.1"
+                )
                 vol = 0.1
             volumes.append(vol)
 
@@ -769,7 +857,9 @@ def process_config_command(message_content):
         return result
 
     # Set mode
-    elif command == "set" and len(parts) >= 3 and parts[2] == "mode" and len(parts) >= 4:
+    elif (
+        command == "set" and len(parts) >= 3 and parts[2] == "mode" and len(parts) >= 4
+    ):
         mode = parts[3]
         if mode not in ["fixed", "risk"]:
             return "Invalid mode. Use 'fixed' or 'risk'."
@@ -779,7 +869,12 @@ def process_config_command(message_content):
         return f"Mode set to: {mode}"
 
     # Set active configuration
-    elif command == "set" and len(parts) >= 3 and parts[2] == "active" and len(parts) >= 4:
+    elif (
+        command == "set"
+        and len(parts) >= 3
+        and parts[2] == "active"
+        and len(parts) >= 4
+    ):
         config_name = parts[3]
         configs = risk_config.get("configs", {})
 
@@ -800,7 +895,7 @@ def process_config_command(message_content):
 
         configs[config_name] = {
             "fixed_lots": DEFAULT_FIXED_LOTS.copy(),
-            "risk_percentages": DEFAULT_RISK_PERCENTAGES.copy()
+            "risk_percentages": DEFAULT_RISK_PERCENTAGES.copy(),
         }
 
         risk_config["configs"] = configs
@@ -828,7 +923,9 @@ def process_config_command(message_content):
         return f"Configuration '{config_name}' deleted."
 
     # Set fixed lot values
-    elif command == "set" and len(parts) >= 3 and parts[2] == "fixed" and len(parts) >= 5:
+    elif (
+        command == "set" and len(parts) >= 3 and parts[2] == "fixed" and len(parts) >= 5
+    ):
         config_name = parts[3]
         configs = risk_config.get("configs", {})
 
@@ -855,7 +952,9 @@ def process_config_command(message_content):
             return "Invalid number format. Please use numbers for limits and values."
 
     # Set risk percentage values
-    elif command == "set" and len(parts) >= 3 and parts[2] == "risk" and len(parts) >= 5:
+    elif (
+        command == "set" and len(parts) >= 3 and parts[2] == "risk" and len(parts) >= 5
+    ):
         config_name = parts[3]
         configs = risk_config.get("configs", {})
 
@@ -949,7 +1048,7 @@ def process_autospread_command(message_content):
         return "Invalid setting. Use: `on` or `off`"
 
     # Update the configuration
-    risk_config["autospread"] = (setting == "on")
+    risk_config["autospread"] = setting == "on"
     save_risk_config()
 
     if setting == "on":
@@ -988,10 +1087,10 @@ def process_help_command():
 
 @client.event
 async def on_ready():
-    print(f'Logged in as {client.user.name} ({client.user.id})')
+    print(f"Logged in as {client.user.name} ({client.user.id})")
     print(f'Active configuration: {risk_config.get("active_config", "default")}')
     print(f'Mode: {risk_config.get("mode", "risk")}')
-    print('------')
+    print("------")
 
 
 @client.event
@@ -1069,7 +1168,7 @@ async def on_message(message):
                     sl=stop_loss,
                     tp=tp,
                     comment=comments,
-                    expiration=expiry
+                    expiration=expiry,
                 )
                 if success:
                     trades_placed += 1
@@ -1078,7 +1177,8 @@ async def on_message(message):
         active_config = risk_config.get("active_config", "default")
         mode = risk_config.get("mode", "risk")
         await message.channel.send(
-            f"Placed {trades_placed}/{num_limits} trades using {mode} mode with '{active_config}' configuration")
+            f"Placed {trades_placed}/{num_limits} trades using {mode} mode with '{active_config}' configuration"
+        )
 
     except ValueError as e:
         await message.channel.send(f"Error: {str(e)}")
