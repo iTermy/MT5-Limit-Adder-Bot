@@ -80,9 +80,12 @@ def is_forex_pair(symbol: str) -> bool:
         "HKD",
     }
 
-    # Remove .r suffix if present
+    # Remove .r or .p suffix if present
     if symbol.endswith(".r"):
         symbol = symbol[:-2]
+
+    if symbol.endswith(".p"):
+        symbol = symbol[:-2]   
 
     if len(symbol) == 6:
         first_currency = symbol[:3]
