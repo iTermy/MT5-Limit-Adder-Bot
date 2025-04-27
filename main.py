@@ -67,6 +67,7 @@ if not DISCORD_TOKEN:
 
 def is_forex_pair(symbol: str) -> bool:
     """Determine if the symbol is a forex pair."""
+    print("DEBUG:", symbol)
     currency_codes = {
         "USD",
         "EUR",
@@ -80,12 +81,15 @@ def is_forex_pair(symbol: str) -> bool:
         "HKD",
     }
 
-    # Remove .r or .p suffix if present
+    # Remove .r suffix if present
     if symbol.endswith(".r"):
         symbol = symbol[:-2]
 
     if symbol.endswith(".p"):
-        symbol = symbol[:-2]   
+        symbol = symbol[:-2]
+
+    if len(symbol) == 7 and symbol.endswith("m"):
+        symbol = symbol[:-1]
 
     if len(symbol) == 6:
         first_currency = symbol[:3]
@@ -430,7 +434,7 @@ def get_mapped_symbol(text: str) -> str or None:
         str: Found symbol or None
     """
     text = text.lower()
-
+    # print("DEBUG: ", text)
     # First check for exact stock symbols (ending in .NYSE or .NAS)
     words = text.upper().split()
     for word in words:
@@ -443,17 +447,24 @@ def get_mapped_symbol(text: str) -> str or None:
     # Then check symbol mappings
     for key, mapped_symbol in SYMBOL_MAPPINGS.items():
         if key in text:
-            # First check if there's a .r version available
-            r_version = f"{mapped_symbol}.r"
-            if r_version in AVAILABLE_SYMBOLS:
-                return r_version
+            # Handle other variants for brokers
+            for suffix in ['.r', '.p', 'm']:
+                variant = f"{mapped_symbol}{suffix}"
+                if variant in AVAILABLE_SYMBOLS:
+                    return variant
+
+            # Check if there's
             return mapped_symbol if mapped_symbol in AVAILABLE_SYMBOLS else None
 
-    # If no mapping found, look for direct symbol match with .r priority
+    # If no mapping found, look for direct symbol match
     for word in words:
-        r_version = f"{word}.r"
-        if r_version in AVAILABLE_SYMBOLS:
-            return r_version
+        # First check suffixed versions
+        for suffix in ['.r', '.p', 'm']:
+            variant = f"{word}{suffix}"
+            if variant in AVAILABLE_SYMBOLS:
+                return variant
+
+        # Then check the original word
         if word in AVAILABLE_SYMBOLS:
             return word
 
